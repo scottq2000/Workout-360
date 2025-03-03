@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gym Workout Tracker</title>
+  <!-- Chart.js CDN for graphs -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- jsPDF CDN for PDF generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    :root {
+      --bg-color: #ffffff;
+      --text-color: #000000;
+      --accent-color: #007bff;
+      --input-bg: #f5f5f5;
+      --border-color: #ccc;
+    }
+    [data-theme="dark"] {
+      --bg-color: #121212;
+      --text-color: #ffffff;
+      --accent-color: #90caf9;
+      --input-bg: #1e1e1e;
+      --border-color: #444;
+    }
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    header {
+      background-color: var(--accent-color);
+      color: var(--bg-color);
+      text-align: center;
+      padding: 1rem;
+    }
+    .container {
+      max-width: 960px;
+      margin: 1rem auto;
+      padding: 1rem;
+    }
+    input, button, select {
+      padding: 0.5rem;
+      margin: 0.5rem 0.2rem;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      background-color: var(--input-bg);
+      color: var(--text-color);
+    }
+    button {
+      cursor: pointer;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+    th, td {
+      border: 1px solid var(--border-color);
+      padding: 8px;
+      text-align: center;
+    }
+    th {
+      background-color: var(--accent-color);
+      color: var(--bg-color);
+    }
+    .form-section {
+      margin-bottom: 2rem;
+      padding: 1rem;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+    }
+    .form-section h2 {
+      margin-top: 0;
+    }
+    .theme-toggle {
+      text-align: center;
+      margin: 1rem 0;
+    }
+    .theme-toggle button {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      margin: 0 0.5rem;
+      cursor: pointer;
+    }
+    canvas {
+      max-width: 100%;
+      height: auto;
+    }
+    @media (max-width: 600px) {
+      input, button, select {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Gym Workout Tracker</h1>
+  </header>
+
+  <div class="container">
+    <!-- Theme Toggle -->
+    <div class="theme-toggle">
+      <button id="lightMode" title="Light Mode">☀️</button>
+      <button id="darkMode" title="Dark Mode">🌙</button>
+      <button id="systemMode" title="System Default">🖥️</button>
+    </div>
+
+    <!-- Workout Entry Form -->
+    <div class="form-section" id="workout-form">
+      <h2>New Workout Entry</h2>
+      <label>
+        Date:
+        <input type="date" id="workoutDate" />
+      </label>
+      <label>
+        Exercise:
+        <input type="text" id="exercise" placeholder="e.g. Bench Press" />
+      </label>
+      <label>
+        Weight:
+        <input type="number" id="exerciseWeight" placeholder="e.g. 100" />
+      </label>
+      <label>
+        Reps:
+        <input type="number" id="reps" placeholder="e.g. 8" />
+      </label>
+      <label>
+        Sets:
+        <input type="number" id="sets" placeholder="e.g. 3" />
+      </label>
+      <br>
+      <button id="addWorkout">Add Workout</button>
+      <button id="resetWorkout">Reset Last Workout Entry</button>
+    </div>
+
+    <!-- Body Weight Entry Form -->
+    <div class="form-section" id="bodyweight-form">
+      <h2>Body Weight Entry</h2>
+      <label>
+        Date:
+        <input type="date" id="bodyWeightDate" />
+      </label>
+      <label>
+        Weight:
+        <input type="number" id="bodyWeight" placeholder="e.g. 75" />
+      </label>
+      <br>
+      <button id="addBodyWeight">Add Body Weight</button>
+      <button id="resetBodyWeight">Reset Last Body Weight Entry</button>
+    </div>
+
+    <!-- History Tables -->
+    <div class="form-section" id="history">
+      <h2>Workout History</h2>
+      <table id="workoutTable">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Exercise</th>
+            <th>Weight</th>
+            <th>Reps</th>
+            <th>Sets</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="form-section" id="bodyweight-history">
+      <h2>Body Weight History</h2>
+      <table id="bodyWeightTable">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Body Weight</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <!-- Graphs Section -->
+    <div class="form-section" id="graphs">
+      <h2>Graphs</h2>
+      <div>
+        <label for="exerciseSelect">Select Exercise:</label>
+        <select id="exerciseSelect">
+          <option value="">-- All Exercises --</option>
+        </select>
+      </div>
+      <canvas id="workoutChart"></canvas>
+      <h3>Body Weight Progress</h3>
+      <canvas id="bodyWeightChart"></canvas>
+    </div>
+
+    <!-- Download & Email Options -->
+    <div class="form-section" id="download-section">
+      <h2>Export & Share</h2>
+      <button id="downloadCSV">Download CSV</button>
+      <button id="downloadPDF">Download PDF</button>
+      <div>
+        <label>
+          Email:
+          <input type="email" id="emailAddress" placeholder="your@email.com" />
+        </label>
+        <button id="sendEmail">Send via Email</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Data storage keys
+    const workoutKey = "workoutData";
+    const bodyWeightKey = "bodyWeightData";
+
+    // Load or initialize data arrays
+    let workouts = JSON.parse(localStorage.getItem(workoutKey)) || [];
+    let bodyWeights = JSON.parse(localStorage.getItem(bodyWeightKey)) || [];
+
+    // DOM elements
+    const workoutTableBody = document.querySelector("#workoutTable tbody");
+    const bodyWeightTableBody = document.querySelector("#bodyWeightTable tbody");
+    const exerciseSelect = document.getElementById("exerciseSelect");
+    const workoutChartCtx = document.getElementById("workoutChart").getContext("2d");
+    const bodyWeightChartCtx = document.getElementById("bodyWeightChart").getContext("2d");
+
+    let workoutChart; 
+    let bodyWeightChart;
+
+    // Theme handling
+    function applyTheme(theme) {
+      if (theme === "system") {
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+          document.documentElement.setAttribute("data-theme", "dark");
+        } else {
+          document.documentElement.setAttribute("data-theme", "light");
+        }
+      } else {
+        document.documentElement.setAttribute("data-theme", theme);
+      }
+      localStorage.setItem("theme", theme);
+    }
+    // Load theme from localStorage or system default
+    const savedTheme = localStorage.getItem("theme") || "system";
+    applyTheme(savedTheme);
+
+    document.getElementById("lightMode").addEventListener("click", () => applyTheme("light"));
+    document.getElementById("darkMode").addEventListener("click", () => applyTheme("dark"));
+    document.getElementById("systemMode").addEventListener("click", () => applyTheme("system"));
+
+    // Utility: format date (YYYY-MM-DD)
+    function getToday() {
+      const today = new Date();
+      return today.toISOString().split("T")[0];
+    }
+    // Set default dates
+    document.getElementById("workoutDate").value = getToday();
+    document.getElementById("bodyWeightDate").value = getToday();
+
+    // Save data to localStorage
+    function saveData() {
+      localStorage.setItem(workoutKey, JSON.stringify(workouts));
+      localStorage.setItem(bodyWeightKey, JSON.stringify(bodyWeights));
+    }
+
+    // Update Workout Table
+    function updateWorkoutTable() {
+      workoutTableBody.innerHTML = "";
+      workouts.forEach((entry) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${entry.date}</td>
+          <td>${entry.exercise}</td>
+          <td>${entry.weight}</td>
+          <td>${entry.reps}</td>
+          <td>${entry.sets}</td>
+        `;
+        workoutTableBody.appendChild(row);
+      });
+    }
+
+    // Update Body Weight Table
+    function updateBodyWeightTable() {
+      bodyWeightTableBody.innerHTML = "";
+      bodyWeights.forEach((entry) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `<td>${entry.date}</td><td>${entry.weight}</td>`;
+        bodyWeightTableBody.appendChild(row);
+      });
+    }
+
+    // Update Exercise Dropdown for graph filtering
+    function updateExerciseDropdown() {
+      const exercises = [...new Set(workouts.map(w => w.exercise))];
+      exerciseSelect.innerHTML = `<option value="">-- All Exercises --</option>`;
+      exercises.forEach(ex => {
+        const opt = document.createElement("option");
+        opt.value = ex;
+        opt.textContent = ex;
+        exerciseSelect.appendChild(opt);
+      });
+    }
+
+    // Add new workout entry
+    document.getElementById("addWorkout").addEventListener("click", () => {
+      const date = document.getElementById("workoutDate").value;
+      const exercise = document.getElementById("exercise").value.trim();
+      const weight = document.getElementById("exerciseWeight").value;
+      const reps = document.getElementById("reps").value;
+      const sets = document.getElementById("sets").value;
+      if (!date || !exercise || !weight || !reps || !sets) {
+        alert("Please fill in all workout fields.");
+        return;
+      }
+      workouts.push({ date, exercise, weight: Number(weight), reps: Number(reps), sets: Number(sets) });
+      saveData();
+      updateWorkoutTable();
+      updateExerciseDropdown();
+      updateWorkoutChart();
+      // Clear form fields (except date)
+      document.getElementById("exercise").value = "";
+      document.getElementById("exerciseWeight").value = "";
+      document.getElementById("reps").value = "";
+      document.getElementById("sets").value = "";
+    });
+
+    // Add new body weight entry
+    document.getElementById("addBodyWeight").addEventListener("click", () => {
+      const date = document.getElementById("bodyWeightDate").value;
+      const weight = document.getElementById("bodyWeight").value;
+      if (!date || !weight) {
+        alert("Please fill in both fields for body weight.");
+        return;
+      }
+      bodyWeights.push({ date, weight: Number(weight) });
+      saveData();
+      updateBodyWeightTable();
+      updateBodyWeightChart();
+      // Clear weight field (keep date)
+      document.getElementById("bodyWeight").value = "";
+    });
+
+    // Reset last workout entry
+    document.getElementById("resetWorkout").addEventListener("click", () => {
+      if (workouts.length > 0) {
+        workouts.pop();
+        saveData();
+        updateWorkoutTable();
+        updateExerciseDropdown();
+        updateWorkoutChart();
+      }
+    });
+
+    // Reset last body weight entry
+    document.getElementById("resetBodyWeight").addEventListener("click", () => {
+      if (bodyWeights.length > 0) {
+        bodyWeights.pop();
+        saveData();
+        updateBodyWeightTable();
+        updateBodyWeightChart();
+      }
+    });
+
+    // CSV Download
+    document.getElementById("downloadCSV").addEventListener("click", () => {
+      let csvContent = "data:text/csv;charset=utf-8,Date,Exercise,Weight,Reps,Sets\n";
+      workouts.forEach(entry => {
+        csvContent += `${entry.date},${entry.exercise},${entry.weight},${entry.reps},${entry.sets}\n`;
+      });
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", "workouts.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
+
+    // PDF Download using jsPDF
+    document.getElementById("downloadPDF").addEventListener("click", () => {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      doc.setFontSize(16);
+      doc.text("Workout Data", 14, 20);
+      doc.setFontSize(10);
+      let y = 30;
+      workouts.forEach(entry => {
+        const text = `${entry.date} - ${entry.exercise}: ${entry.weight}kg, ${entry.reps} reps x ${entry.sets} sets`;
+        doc.text(text, 14, y);
+        y += 10;
+      });
+      doc.save("workouts.pdf");
+    });
+
+    // Send via Email (using mailto link)
+    document.getElementById("sendEmail").addEventListener("click", () => {
+      const email = document.getElementById("emailAddress").value;
+      if (!email) {
+        alert("Please enter an email address.");
+        return;
+      }
+      let bodyText = "Workout Data:\n";
+      workouts.forEach(entry => {
+        bodyText += `${entry.date} - ${entry.exercise}: ${entry.weight}kg, ${entry.reps} reps x ${entry.sets} sets\n`;
+      });
+      const mailtoLink = `mailto:${email}?subject=Workout Data&body=${encodeURIComponent(bodyText)}`;
+      window.location.href = mailtoLink;
+    });
+
+    // Chart updates
+    function updateWorkoutChart() {
+      // Filter by selected exercise if chosen
+      const selectedExercise = exerciseSelect.value;
+      const filteredWorkouts = selectedExercise 
+        ? workouts.filter(w => w.exercise === selectedExercise) 
+        : workouts;
+      // Sort workouts by date
+      filteredWorkouts.sort((a, b) => new Date(a.date) - new Date(b.date));
+      const labels = filteredWorkouts.map(w => w.date);
+      const data = filteredWorkouts.map(w => w.weight);
+      
+      if (workoutChart) {
+        workoutChart.destroy();
+      }
+      workoutChart = new Chart(workoutChartCtx, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [{
+            label: selectedExercise ? `${selectedExercise} Progress` : "Exercise Weight Progress",
+            data,
+            borderWidth: 2,
+            fill: false,
+            tension: 0.2
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: { title: { display: true, text: "Date" } },
+            y: { title: { display: true, text: "Weight" } }
+          }
+        }
+      });
+    }
+
+    function updateBodyWeightChart() {
+      // Sort body weight entries by date
+      const sortedBW = bodyWeights.sort((a, b) => new Date(a.date) - new Date(b.date));
+      const labels = sortedBW.map(entry => entry.date);
+      const data = sortedBW.map(entry => entry.weight);
+      
+      if (bodyWeightChart) {
+        bodyWeightChart.destroy();
+      }
+      bodyWeightChart = new Chart(bodyWeightChartCtx, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [{
+            label: "Body Weight Progress",
+            data,
+            borderWidth: 2,
+            fill: false,
+            tension: 0.2
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: { title: { display: true, text: "Date" } },
+            y: { title: { display: true, text: "Body Weight" } }
+          }
+        }
+      });
+    }
+
+    // Update chart when exercise selection changes
+    exerciseSelect.addEventListener("change", updateWorkoutChart);
+
+    // Initial rendering
+    updateWorkoutTable();
+    updateBodyWeightTable();
+    updateExerciseDropdown();
+    updateWorkoutChart();
+    updateBodyWeightChart();
+  </script>
+</body>
+</html>
